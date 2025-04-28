@@ -1,0 +1,13 @@
+# User Service
+
+**User Service** is responsible for managing user data within the system.
+It handles processes like **user registration**, **authentication**, **role management**, and **JWT token generation and parsing**.
+
+
+##Features
+
+- User registration with email verification.
+- Login functionality with password hashing.
+- Role-based access control.
+- JWT token generation with secure signing and parsing.
+- Supports token expiration and refreshing.

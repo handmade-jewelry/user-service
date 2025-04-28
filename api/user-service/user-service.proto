@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+//Имя пакета для сгенерированного кода:
+package user_service;
+
+import "google/api/annotations.proto";
+
+// Путь к пакету для сгенерированного кода
+//option go_package = "gitlab.ozon.ru/marketplace/go/user-service/pkg/user-service;user_service";
+
+option go_package = "github.com/handmade-jewellery/user/pkg/user;user_service";
+
+service UserService {
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse) {
+    option (google.api.http) = {
+      get: "/refresh-token"
+    };
+  }
+
+  rpc Registration(RegistrationRequest) returns (RegistrationResponse) {
+    option (google.api.http) = {
+      get: "/registration"
+    };
+  }
+
+  rpc Login(LoginRequest) returns (LoginResponse) {
+    option (google.api.http) = {
+      get: "/login"
+    };
+  }
+}
+
+message RefreshTokenRequest {
+  string access_token = 1 [json_name = "access_token"];
+  string refresh_token = 2 [json_name = "refresh_token"];
+}
+
+message RefreshTokenResponse {
+  Token token = 1;
+}
+
+message RegistrationRequest {}
+
+message RegistrationResponse {}
+
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  int64 user_id = 1[ json_name = "user_id"];
+  Token token = 2;
+}
+
+message Token {
+  string access_token = 1 [json_name = "access_token"];
+  int32 expires_in = 2 [json_name = "expires_in"];
+  string refresh_token = 3 [json_name = "refresh_token"];
+}
