@@ -1,0 +1,4 @@
+auth:
+  jwt_token_secret: "UT+rnoHKMN9eZMhJHgDZQg=="
+  auth_token_expiry_minutes: "1h0m"
+  refresh_token_expiry_minutes: "1h0m"
