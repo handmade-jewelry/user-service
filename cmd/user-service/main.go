@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/handmade-jewellery/user-service/internal/app"
+	"github.com/handmade-jewelry/user-service/internal/app"
 	"log"
 )
 

@@ -1,9 +1,9 @@
 package app
 
 import (
-	"github.com/handmade-jewellery/user-service/internal/app/user"
-	"github.com/handmade-jewellery/user-service/internal/server"
-	"github.com/handmade-jewellery/user-service/util"
+	"github.com/handmade-jewelry/user-service/internal/app/user"
+	"github.com/handmade-jewelry/user-service/internal/server"
+	"github.com/handmade-jewelry/user-service/util"
 	"github.com/spf13/viper"
 	"log"
 	"time"
