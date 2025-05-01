@@ -1,4 +1,4 @@
-module github.com/handmade-jewellery/user-service
+module github.com/handmade-jewelry/user-service
 
 go 1.23.1
 
@@ -8,7 +8,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	github.com/handmade-jewellery/user-service/pkg/api/user-service v0.0.0-00010101000000-000000000000
 	github.com/spf13/viper v1.20.1
-	google.golang.org/grpc v1.71.1
+	google.golang.org/grpc v1.72.0
 )
 
 require (
