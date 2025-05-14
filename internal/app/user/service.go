@@ -1,7 +1,7 @@
 package user
 
 import (
-	pb "github.com/handmade-jewellery/user-service/pkg/api/user-service"
+	pb "github.com/handmade-jewelry/user-service/pkg/api/user-service"
 )
 
 type Service struct {

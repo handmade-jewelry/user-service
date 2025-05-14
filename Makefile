@@ -8,9 +8,9 @@ proto-gen:
 	buf generate
 
 # Make new migration sql
-ifndef NAME
-	$(error Usage: make new-migration NAME=your_migration_name)
-endif
+#ifndef NAME
+#	$(error Usage: make new-migration NAME=your_migration_name)
+#endif
 
 new-migration:
 	goose -dir $(MIGRATIONS_DIR) create $(NAME) sql

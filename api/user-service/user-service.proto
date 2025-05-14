@@ -8,7 +8,7 @@ import "google/api/annotations.proto";
 // Путь к пакету для сгенерированного кода
 //option go_package = "gitlab.ozon.ru/marketplace/go/user-service/pkg/user-service;user_service";
 
-option go_package = "github.com/handmade-jewellery/user/pkg/user;user_service";
+option go_package = "github.com/handmade-jewelry/user/pkg/user;user_service";
 
 service UserService {
   rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse) {

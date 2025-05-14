@@ -3,10 +3,8 @@ module github.com/handmade-jewelry/user-service
 go 1.23.1
 
 require (
-	github.com/go-chi/chi/v5 v5.2.1
-	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
-	github.com/handmade-jewellery/user-service/pkg/api/user-service v0.0.0-00010101000000-000000000000
+	github.com/handmade-jewelry/user-service/pkg/api/user-service v0.0.0-00010101000000-000000000000
 	github.com/spf13/viper v1.20.1
 	google.golang.org/grpc v1.72.0
 )
@@ -34,4 +32,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/handmade-jewellery/user-service/pkg/api/user-service => ./pkg/api/user-service
+replace github.com/handmade-jewelry/user-service/pkg/api/user-service => ./pkg/api/user-service
