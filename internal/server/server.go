@@ -2,41 +2,51 @@ package server
 
 import (
 	"context"
-	"github.com/go-chi/chi/v5"
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
-	pb "github.com/handmade-jewellery/user-service/pkg/api/user-service"
-	"github.com/handmade-jewelry/user-service/internal/app/user"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"log"
 	"net"
 	"net/http"
+	"time"
+
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+
+	"github.com/handmade-jewelry/user-service/internal/app/user"
+	pb "github.com/handmade-jewelry/user-service/pkg/api/user-service"
 )
 
-type Server struct {
-	userServiceServer *user.Service
-	grpcPort          string
-	httpPort          string
+type Opts struct {
+	GrpcPort        string
+	GrpcNetwork     string
+	HttpPort        string
+	HttpHost        string
+	GracefulTimeout time.Duration
 }
 
-func NewServer(userServiceServer *user.Service) *Server {
+type Server struct {
+	opts              *Opts
+	userServiceServer *user.Service
+	grpcServer        *grpc.Server
+	httpServer        *http.Server
+}
+
+func NewServer(userServiceServer *user.Service, opts *Opts) *Server {
 	return &Server{
 		userServiceServer: userServiceServer,
+		opts:              opts,
 	}
 }
 
 func (s *Server) Run() error {
-	//1. Запуск gRPC сервера порт 8081
 	err := s.runGRPC()
 	if err != nil {
 		log.Printf("failed to run gRPC server: %v", err)
 		return err
 	}
 
-	// 2. Запуск http сервера порт 8080
 	err = s.runHTTP()
 	if err != nil {
-		log.Printf("failed to run http server: %v", err)
+		log.Printf("failed to run HTTP server: %v", err)
 		return err
 	}
 
@@ -44,60 +54,64 @@ func (s *Server) Run() error {
 }
 
 func (s *Server) runGRPC() error {
-	grpcServer := grpc.NewServer()
+	s.grpcServer = grpc.NewServer()
 
-	pb.RegisterUserServiceServer(grpcServer, s.userServiceServer)
+	pb.RegisterUserServiceServer(s.grpcServer, s.userServiceServer)
 
-	lis, err := net.Listen("tcp", ":8083")
+	lis, err := net.Listen(s.opts.GrpcNetwork, s.opts.GrpcPort)
 	if err != nil {
 		log.Printf("Failed to listen: %v", err)
 		return err
 	}
 
 	go func() {
-		if err = grpcServer.Serve(lis); err != nil {
+		log.Printf("gRPC server started on %s", s.opts.GrpcPort)
+		if err = s.grpcServer.Serve(lis); err != nil {
 			log.Printf("gRPC server failed: %v", err)
-			s.stopGRPC(grpcServer)
+			s.stopGRPC()
 		}
 	}()
 
-	log.Println("gRPC server started on :8080")
 	return nil
 }
 
-func (s *Server) stopGRPC(grpcServer *grpc.Server) {
-	// graceful shutdown
-	grpcServer.GracefulStop()
+func (s *Server) stopGRPC() {
+	s.grpcServer.GracefulStop()
 	log.Println("gRPC server gracefully stopped")
 }
 
 func (s *Server) runHTTP() error {
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	mux := runtime.NewServeMux()
-
-	conn, err := grpc.NewClient("localhost:8084", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	err := pb.RegisterUserServiceHandlerFromEndpoint(ctx, mux, s.opts.GrpcPort, opts)
 	if err != nil {
-		log.Printf("Failed to create gRPC client: %v", err)
 		return err
 	}
 
-	defer conn.Close() // Обязательно закрыть соединение после завершения
-
-	err = pb.RegisterUserServiceHandler(context.Background(), mux, conn)
-	if err != nil {
-		log.Printf("Failed to register user service handler: %v", err)
-		return err
+	s.httpServer = &http.Server{
+		Addr:    s.opts.HttpPort,
+		Handler: mux,
 	}
 
-	// 3. Запуск HTTP сервера с маршрутизацией через Chi
-	router := chi.NewRouter()
-	router.Handle("/", mux) // Гейтвей будет обрабатывать HTTP-запросы
-
-	err = http.ListenAndServe(":8085", router)
-	if err != nil {
-		log.Printf("Failed to start HTTP server: %v", err)
-		return err
+	log.Printf("Starting HTTP server on port %s\n", s.opts.HttpPort)
+	if err := s.httpServer.ListenAndServe(); err != nil {
+		log.Fatalf("failed to serve HTTP server: %v", err)
 	}
 
-	log.Println("Starting HTTP server on :8080...")
 	return nil
+}
+
+func (s *Server) stopHTTP() {
+	ctx, cancel := context.WithTimeout(context.Background(), s.opts.GracefulTimeout)
+	defer cancel()
+
+	if err := s.httpServer.Shutdown(ctx); err != nil {
+		log.Printf("HTTP server shutdown failed: %v", err)
+	} else {
+		log.Println("HTTP server gracefully stopped")
+	}
 }

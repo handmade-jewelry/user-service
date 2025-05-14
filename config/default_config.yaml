@@ -1,4 +1,10 @@
-auth:
-  jwt_token_secret: ""
-  auth_token_expiry_minutes: ""
-  refresh_token_expiry_minutes: ""
+# gRPC
+grpc:
+  port: ""
+  network: ""
+
+# HTTP
+http:
+  port: ""
+  host: ""
+  gracefulTimeout: ""
