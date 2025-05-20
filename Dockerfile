@@ -9,8 +9,17 @@ RUN go mod download
 
 RUN go build -o user-service ./cmd/user-service
 
+RUN go install github.com/pressly/goose/v3/cmd/goose@latest
+
 FROM debian:bookworm-slim
 
-COPY --from=builder /app/user-service /usr/local/bin/user-service
+RUN apt-get update && apt-get install -y postgresql-client
 
-CMD ["/usr/local/bin/user-service"]
+COPY --from=builder /app/user-service /usr/local/bin/user-service
+COPY --from=builder /go/bin/goose /usr/local/bin/goose
+COPY ./migrations ./migrations
+COPY ./migrations.sh ./migrations.sh
+
+RUN chmod +x ./migrations.sh
+
+CMD ["./migrations.sh"]
