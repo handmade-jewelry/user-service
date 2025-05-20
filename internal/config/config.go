@@ -12,6 +12,15 @@ const (
 	HTTPPort            = "http.port"
 	HTTPHost            = "http.host"
 	HTTPGracefulTimeout = "http.graceful_timeout"
+	DBName              = "database.name"
+	DBUser              = "database.user"
+	DBPassword          = "database.password"
+	DBHost              = "database.host"
+	DBPort              = "database.port"
+	SSLMode             = "database.ssl_mode"
+	DBMaxCons           = "database.max_cons"
+	DBMinCons           = "database.min_cons"
+	DBMaxConLifetime    = "database.max_con_lifetime"
 )
 
 type Config struct {
@@ -20,6 +29,15 @@ type Config struct {
 	HTTPPort            string
 	HTTPHost            string
 	HTTPGracefulTimeout time.Duration
+	DBName              string
+	DBUser              string
+	DBPassword          string
+	DbHost              string
+	DbPort              uint16
+	SSLMode             string
+	DBMaxCons           int32
+	DBMinCons           int32
+	DBMaxConLifetime    time.Duration
 }
 
 func LoadConfig() error {
