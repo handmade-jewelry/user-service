@@ -1,6 +1,9 @@
 PROTO_DIR=.
 GEN_DIR=pkg/user-service
 MIGRATIONS_DIR = ./migrations
+DB_USER=user_service_user
+DB_NAME=user_service_db
+DB_SSLMODE=disable
 
 .PHONY: proto-gen new-migration migration-up migration-down
 

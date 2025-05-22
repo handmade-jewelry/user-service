@@ -20,3 +20,7 @@ http:
   port: ""
   host: ""
   gracefulTimeout: ""
+
+# Verification email
+token:
+  exp: ""
