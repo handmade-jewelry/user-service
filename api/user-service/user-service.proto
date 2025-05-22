@@ -1,25 +1,21 @@
 syntax = "proto3";
 
-//Имя пакета для сгенерированного кода:
 package user_service;
 
 import "google/api/annotations.proto";
 
-// Путь к пакету для сгенерированного кода
-//option go_package = "gitlab.ozon.ru/marketplace/go/user-service/pkg/user-service;user_service";
-
 option go_package = "github.com/handmade-jewelry/user/pkg/user;user_service";
 
 service UserService {
-  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse) {
-    option (google.api.http) = {
-      get: "/refresh-token"
-    };
-  }
-
   rpc Registration(RegistrationRequest) returns (RegistrationResponse) {
     option (google.api.http) = {
       get: "/registration"
+    };
+  }
+
+  rpc VerifyEmail(VerifyEmailRequest) returns (VerifyEmailResponse) {
+    option (google.api.http) = {
+      get: "/verify"
     };
   }
 
@@ -30,18 +26,22 @@ service UserService {
   }
 }
 
-message RefreshTokenRequest {
-  string access_token = 1 [json_name = "access_token"];
-  string refresh_token = 2 [json_name = "refresh_token"];
+message RegistrationRequest {
+  string email = 1;
+  string password = 2;
 }
 
-message RefreshTokenResponse {
-  Token token = 1;
+message RegistrationResponse {
+  bool result = 1;
 }
 
-message RegistrationRequest {}
+message VerifyEmailRequest {
+  string token = 1;
+}
 
-message RegistrationResponse {}
+message VerifyEmailResponse {
+  bool result = 1;
+}
 
 message LoginRequest {
   string email = 1;
@@ -49,12 +49,10 @@ message LoginRequest {
 }
 
 message LoginResponse {
-  int64 user_id = 1[ json_name = "user_id"];
-  Token token = 2;
+  int64 user_id = 1 [json_name = "user_id"];
+  repeated Role roles = 2;
 }
 
-message Token {
-  string access_token = 1 [json_name = "access_token"];
-  int32 expires_in = 2 [json_name = "expires_in"];
-  string refresh_token = 3 [json_name = "refresh_token"];
+message Role {
+  string name = 1;
 }

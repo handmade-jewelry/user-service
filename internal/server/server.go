@@ -24,16 +24,16 @@ type Opts struct {
 }
 
 type Server struct {
-	opts              *Opts
-	userServiceServer *user.Service
-	grpcServer        *grpc.Server
-	httpServer        *http.Server
+	opts       *Opts
+	impl       *user.UserServiceServer
+	grpcServer *grpc.Server
+	httpServer *http.Server
 }
 
-func NewServer(userServiceServer *user.Service, opts *Opts) *Server {
+func NewServer(impl *user.UserServiceServer, opts *Opts) *Server {
 	return &Server{
-		userServiceServer: userServiceServer,
-		opts:              opts,
+		impl: impl,
+		opts: opts,
 	}
 }
 
@@ -56,7 +56,7 @@ func (s *Server) Run() error {
 func (s *Server) runGRPC() error {
 	s.grpcServer = grpc.NewServer()
 
-	pb.RegisterUserServiceServer(s.grpcServer, s.userServiceServer)
+	pb.RegisterUserServiceServer(s.grpcServer, s.impl)
 
 	lis, err := net.Listen(s.opts.GrpcNetwork, s.opts.GrpcPort)
 	if err != nil {
