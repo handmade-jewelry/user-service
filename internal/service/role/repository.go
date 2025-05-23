@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/Masterminds/squirrel"
 	"github.com/georgysavva/scany/v2/pgxscan"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -19,7 +20,7 @@ func newRepository(dbPool *pgxpool.Pool) *repository {
 	}
 }
 
-func (r *repository) getRoles(ctx context.Context, userID int64) ([]Role, error) {
+func (r *repository) getUserRoles(ctx context.Context, userID int64) ([]Role, error) {
 	sql, args, err := squirrel.
 		Select("r.*").
 		From("role r").
@@ -40,4 +41,39 @@ func (r *repository) getRoles(ctx context.Context, userID int64) ([]Role, error)
 	}
 
 	return roles, nil
+}
+
+func (r *repository) getRoleByName(ctx context.Context, roleName RoleName) (*Role, error) {
+	query, args, err := queryBuilder.
+		Select("*").
+		From(roleTable).
+		Where("name = ?", roleName).
+		Where("deleted_at IS NULL").
+		ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	var rle Role
+	err = pgxscan.Get(ctx, r.dbPool, &rle, query, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &rle, nil
+}
+
+func (r *repository) setUserRole(ctx context.Context, tx pgx.Tx, userID, roleID int64) error {
+	query, args, err := squirrel.
+		Insert(userRoleTable).
+		Columns("user_id", "role_id").
+		Values(userID, roleID).
+		PlaceholderFormat(squirrel.Dollar).
+		ToSql()
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(ctx, query, args...)
+	return err
 }

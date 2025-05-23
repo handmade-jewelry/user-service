@@ -7,5 +7,12 @@ create table if not exists role
     deleted_at timestamp
 );
 
+INSERT INTO role (name)
+VALUES
+    ('SELLER'),
+    ('CUSTOMER'),
+    ('ADMIN')
+ON CONFLICT (name) DO NOTHING;
+
 -- +goose Down
 drop table if exists role;

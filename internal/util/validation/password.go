@@ -1,13 +1,12 @@
-package user
+package validation
 
 import (
-	"regexp"
 	"unicode"
 )
 
 const passwordLength = 18
 
-func validatePassword(p string) bool {
+func ValidatePassword(p string) bool {
 	if len(p) != passwordLength {
 		return false
 	}
@@ -27,10 +26,4 @@ func validatePassword(p string) bool {
 	}
 
 	return hasUpper && hasLower && hasDigit && hasSpecial
-}
-
-func validateEmail(email string) bool {
-	re := regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
-
-	return re.MatchString(email)
 }

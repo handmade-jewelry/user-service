@@ -2,10 +2,8 @@ package user_verification
 
 import (
 	"context"
-	"fmt"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"log"
 	"time"
 
 	"google.golang.org/grpc/codes"
@@ -13,6 +11,7 @@ import (
 
 	"github.com/handmade-jewelry/user-service/internal/service/user"
 	"github.com/handmade-jewelry/user-service/internal/service/verification"
+	pgTx "github.com/handmade-jewelry/user-service/libs/pgutils"
 )
 
 type Service struct {
@@ -33,47 +32,33 @@ func NewService(
 	}
 }
 
-func (s *Service) VerifyUserByToken(ctx context.Context, token string) (err error) {
-	tx, err := s.dbPool.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		return fmt.Errorf("begin tx: %w", err)
-	}
-
-	defer func() {
+func (s *Service) VerifyUserByToken(ctx context.Context, token string) error {
+	err := pgTx.WithTx(ctx, s.dbPool, func(tx pgx.Tx) error {
+		verification, err := s.verificationService.GetVerification(ctx, tx, token)
 		if err != nil {
-			if rbErr := tx.Rollback(ctx); rbErr != nil {
-				log.Printf("tx rollback error: %v", rbErr)
-			}
+			return err
 		}
-	}()
 
-	verification, err := s.verificationService.GetVerification(ctx, tx, token)
-	if err != nil {
-		return err
-	}
+		if verification.IsUsed {
+			return status.Error(codes.InvalidArgument, "verification token already used")
+		}
 
-	if verification.IsUsed {
-		return status.Error(codes.InvalidArgument, "verification token already used")
-	}
+		if verification.ExpiredAt.UTC().Before(time.Now().UTC()) {
+			return status.Error(codes.InvalidArgument, "verification token expired")
+		}
 
-	if verification.ExpiredAt.UTC().Before(time.Now().UTC()) {
-		return status.Error(codes.InvalidArgument, "verification token expired")
-	}
+		err = s.verificationService.MarkTokenUsed(ctx, tx, token)
+		if err != nil {
+			return status.Error(codes.Internal, "failed to mark token as used")
+		}
 
-	err = s.verificationService.MarkTokenUsed(ctx, tx, token)
-	if err != nil {
-		return status.Error(codes.Internal, "failed to mark token as used")
-	}
+		err = s.userService.MarkUserIsVerified(ctx, tx, verification.UserID)
+		if err != nil {
+			return status.Error(codes.Internal, "failed to mark user as verified")
+		}
 
-	err = s.userService.MarkUserIsVerified(ctx, tx, verification.UserID)
-	if err != nil {
-		return status.Error(codes.Internal, "failed to mark user as verified")
-	}
+		return nil
+	})
 
-	err = tx.Commit(ctx)
-	if err != nil {
-		return fmt.Errorf("commit tx: %w", err)
-	}
-
-	return nil
+	return err
 }
