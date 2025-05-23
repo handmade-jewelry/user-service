@@ -20,7 +20,7 @@ func newRepository(dbPool *pgxpool.Pool) *repository {
 	}
 }
 
-func (r *repository) createUser(ctx context.Context, email, passwordHash string) (*User, error) {
+func (r *repository) createUser(ctx context.Context, tx pgx.Tx, email, passwordHash string) (*User, error) {
 	query, args, err := queryBuilder.
 		Insert(usersTable).
 		Columns("email", "password").
@@ -32,7 +32,7 @@ func (r *repository) createUser(ctx context.Context, email, passwordHash string)
 	}
 
 	user := &User{}
-	err = pgxscan.Get(ctx, r.dbPool, user, query, args...)
+	err = pgxscan.Get(ctx, tx, user, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -54,9 +54,6 @@ func (r *repository) getUser(ctx context.Context, email string) (*User, error) {
 	var user User
 	err = pgxscan.Get(ctx, r.dbPool, &user, query, args...)
 	if err != nil {
-		if pgxscan.NotFound(err) {
-			return nil, nil
-		}
 		return nil, err
 	}
 

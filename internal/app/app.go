@@ -164,8 +164,8 @@ func (a *App) initDb(ctx context.Context) error {
 }
 
 func (a *App) initService() {
-	a.userService = user.NewService(a.dBPool)
 	a.roleService = role.NewService(a.dBPool)
 	a.verificationService = verification.NewService(a.dBPool, a.cfg.VerificationTokenExp)
+	a.userService = user.NewService(a.dBPool, a.roleService, a.verificationService)
 	a.userVerificationService = userVerification.NewService(a.userService, a.verificationService, a.dBPool)
 }

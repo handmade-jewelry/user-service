@@ -17,3 +17,8 @@ type User struct {
 	UpdatedAt  time.Time
 	DeletedAt  *time.Time
 }
+
+type UserWithRoles struct {
+	UserID int64
+	Roles  []string
+}

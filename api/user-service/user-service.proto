@@ -7,9 +7,15 @@ import "google/api/annotations.proto";
 option go_package = "github.com/handmade-jewelry/user/pkg/user;user_service";
 
 service UserService {
-  rpc Registration(RegistrationRequest) returns (RegistrationResponse) {
+  rpc SellerRegister(RegisterRequest) returns (RegisterResponse) {
     option (google.api.http) = {
-      get: "/registration"
+      get: "/register/seller"
+    };
+  }
+
+  rpc CustomerRegister(RegisterRequest) returns (RegisterResponse) {
+    option (google.api.http) = {
+      get: "/register/customer"
     };
   }
 
@@ -26,12 +32,12 @@ service UserService {
   }
 }
 
-message RegistrationRequest {
+message RegisterRequest {
   string email = 1;
   string password = 2;
 }
 
-message RegistrationResponse {
+message RegisterResponse {
   bool result = 1;
 }
 

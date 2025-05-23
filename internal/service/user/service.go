@@ -2,74 +2,108 @@ package user
 
 import (
 	"context"
-	"errors"
-	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/handmade-jewelry/user-service/internal/service/role"
+	"github.com/handmade-jewelry/user-service/internal/service/verification"
+	"github.com/handmade-jewelry/user-service/internal/util/hasher"
+	"github.com/handmade-jewelry/user-service/internal/util/validation"
+	pgError "github.com/handmade-jewelry/user-service/libs/pgutils"
+	pgTx "github.com/handmade-jewelry/user-service/libs/pgutils"
+	"github.com/handmade-jewelry/user-service/logger"
 )
 
 type Service struct {
-	repo *repository
+	roleService         *role.Service
+	verificationService *verification.Service
+	repo                *repository
+	dbPool              *pgxpool.Pool
 }
 
-func NewService(dbPool *pgxpool.Pool) *Service {
+func NewService(dbPool *pgxpool.Pool, roleService *role.Service, verificationService *verification.Service) *Service {
 	return &Service{
-		repo: newRepository(dbPool),
+		roleService:         roleService,
+		verificationService: verificationService,
+		repo:                newRepository(dbPool),
+		dbPool:              dbPool,
 	}
 }
 
-func (s *Service) CreateUser(ctx context.Context, email, password string) (*User, error) {
-	hashedPassword, err := s.hashPassword(password)
+func (s *Service) Register(ctx context.Context, email, password string, roleName role.RoleName) error {
+	err := validateCredentials(email, password)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to hash password: %v", err)
+		return err
 	}
 
-	user, err := s.repo.createUser(ctx, email, string(hashedPassword))
+	user, err := s.CreateUserWithRole(ctx, email, password, roleName)
 	if err != nil {
-		//todo переделать
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return nil, status.Error(codes.AlreadyExists, "user with this email already exists")
+		return err
+	}
+
+	err = s.verificationService.SendVerificationLink(ctx, user.ID)
+	if err != nil {
+		logger.Error("failed to send verification", err)
+	}
+
+	return nil
+}
+
+func validateCredentials(email, password string) error {
+	if !validation.ValidatePassword(password) {
+		return status.Errorf(codes.InvalidArgument, "invalid password format")
+	}
+
+	if !validation.ValidateEmail(email) {
+		return status.Errorf(codes.InvalidArgument, "invalid email format")
+	}
+
+	return nil
+}
+
+func (s *Service) CreateUserWithRole(ctx context.Context, email, password string, roleName role.RoleName) (*User, error) {
+	var user *User
+	err := pgTx.WithTx(ctx, s.dbPool, func(tx pgx.Tx) error {
+		hashedPassword, err := hasher.GenerateHashPassword(password)
+		if err != nil {
+			return status.Errorf(codes.Internal, "failed to hash password: %v", err)
 		}
-		return nil, status.Errorf(codes.Internal, "failed to create user: %v", err)
+
+		user, err = s.repo.createUser(ctx, tx, email, hashedPassword)
+		if err != nil {
+			return pgError.MapPostgresError("failed to create user", err)
+		}
+
+		err = s.roleService.SetUserRole(ctx, tx, user.ID, roleName)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
 	}
 
 	return user, nil
 }
 
-func (s *Service) hashPassword(password string) ([]byte, error) {
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+func (s *Service) Login(ctx context.Context, email, password string) (*UserWithRoles, error) {
+	err := validateCredentials(email, password)
 	if err != nil {
 		return nil, err
 	}
 
-	return hashedPassword, nil
-}
-
-func (s *Service) checkPassword(password, usersPassword string) (bool, error) {
-	err := bcrypt.CompareHashAndPassword([]byte(usersPassword), []byte(password))
-	if err != nil {
-		return false, err
-	}
-
-	return true, nil
-}
-
-func (s *Service) LoginUser(ctx context.Context, email, password string) (*User, error) {
 	user, err := s.repo.getUser(ctx, email)
 	if err != nil {
-		//todo
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, status.Error(codes.NotFound, "user not found")
-		}
-		return nil, status.Errorf(codes.Internal, "failed to get user: %v", err)
+		return nil, pgError.MapPostgresError("failed to get user", err)
 	}
 
-	isCheck, err := s.checkPassword(password, user.Password)
+	isCheck, err := hasher.CompareHashAndPassword(password, user.Password)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "password check failed: %v", err)
 	}
@@ -82,9 +116,22 @@ func (s *Service) LoginUser(ctx context.Context, email, password string) (*User,
 		return nil, status.Errorf(codes.PermissionDenied, "user is not verified")
 	}
 
-	return user, nil
+	roles, err := s.roleService.GetUserRolesName(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &UserWithRoles{
+		UserID: user.ID,
+		Roles:  roles,
+	}, nil
 }
 
 func (s *Service) MarkUserIsVerified(ctx context.Context, tx pgx.Tx, userID int64) error {
-	return s.repo.markUserIsVerified(ctx, tx, userID)
+	err := s.repo.markUserIsVerified(ctx, tx, userID)
+	if err != nil {
+		return pgError.MapPostgresError("failed to verify user", err)
+	}
+
+	return nil
 }

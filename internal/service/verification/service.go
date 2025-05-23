@@ -2,7 +2,7 @@ package verification
 
 import (
 	"context"
-	"errors"
+	pgError "github.com/handmade-jewelry/user-service/libs/pgutils"
 	"time"
 
 	"crypto/rand"
@@ -11,8 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-
-	"github.com/handmade-jewelry/user-service/internal/service/user"
 )
 
 type Service struct {
@@ -27,16 +25,16 @@ func NewService(dbPool *pgxpool.Pool, verificationTokenExp time.Duration) *Servi
 	}
 }
 
-func (s *Service) SendVerificationLink(ctx context.Context, user *user.User) error {
+func (s *Service) SendVerificationLink(ctx context.Context, userID int64) error {
 	token, err := s.generateToken()
 	if err != nil {
 		return status.Errorf(codes.Internal, "failed to generate verification token")
 	}
 
 	expiredAt := time.Now().UTC().Add(s.verificationTokenExp)
-	err = s.repo.createVerification(ctx, user.ID, token, expiredAt)
+	err = s.repo.createVerification(ctx, userID, token, expiredAt)
 	if err != nil {
-		return status.Errorf(codes.Internal, "failed to create verification: %v", err)
+		return pgError.MapPostgresError("failed to create verification", err)
 	}
 
 	return s.sendEmailLetter(ctx, token)
@@ -59,16 +57,17 @@ func (s *Service) sendEmailLetter(ctx context.Context, token string) error {
 func (s *Service) GetVerification(ctx context.Context, tx pgx.Tx, token string) (*Verification, error) {
 	verification, err := s.repo.getVerification(ctx, tx, token)
 	if err != nil {
-		//todo
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, status.Error(codes.NotFound, "verification token not found")
-		}
-		return nil, err
+		return nil, pgError.MapPostgresError("failed to get verification token", err)
 	}
 
 	return verification, nil
 }
 
 func (s *Service) MarkTokenUsed(ctx context.Context, tx pgx.Tx, token string) error {
-	return s.repo.markTokenUsed(ctx, tx, token)
+	err := s.repo.markTokenUsed(ctx, tx, token)
+	if err != nil {
+		return pgError.MapPostgresError("failed to mark used verification", err)
+	}
+
+	return nil
 }
