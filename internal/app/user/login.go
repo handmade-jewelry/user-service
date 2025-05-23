@@ -17,5 +17,5 @@ func (u *UserServiceServer) Login(ctx context.Context, req *pb.LoginRequest) (*p
 	return &pb.LoginResponse{
 		UserId: userWithRoles.UserID,
 		Roles:  convertRolesToPb(userWithRoles.Roles),
-	}, nilus
+	}, nil
 }
