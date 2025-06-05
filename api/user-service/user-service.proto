@@ -3,6 +3,7 @@ syntax = "proto3";
 package user_service;
 
 import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
 
 option go_package = "github.com/handmade-jewelry/user/pkg/user;user_service";
 
@@ -28,6 +29,18 @@ service UserService {
   rpc Login(LoginRequest) returns (LoginResponse) {
     option (google.api.http) = {
       get: "/login"
+    };
+  }
+
+  rpc GetUserRoles(GetUserRolesRequest) returns (GetUserRolesResponse) {
+    option (google.api.http) = {
+      get: "/users/{user_id}/roles"
+    };
+  }
+
+  rpc ListRoles(google.protobuf.Empty) returns (GetListRolesResponse) {
+    option (google.api.http) = {
+      get: "/roles"
     };
   }
 }
@@ -61,4 +74,16 @@ message LoginResponse {
 
 message Role {
   string name = 1;
+}
+
+message GetUserRolesRequest {
+  int64 user_id = 1 [json_name = "user_id"];
+}
+
+message GetUserRolesResponse {
+  repeated Role roles = 1;
+}
+
+message GetListRolesResponse {
+  repeated Role roles = 1;
 }

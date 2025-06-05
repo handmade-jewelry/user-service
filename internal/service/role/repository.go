@@ -77,3 +77,22 @@ func (r *repository) setUserRole(ctx context.Context, tx pgx.Tx, userID, roleID 
 	_, err = tx.Exec(ctx, query, args...)
 	return err
 }
+
+func (r *repository) listRoles(ctx context.Context) ([]Role, error) {
+	query, args, err := squirrel.
+		Select("*").
+		From(roleTable).
+		PlaceholderFormat(squirrel.Dollar).
+		ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	var roles []Role
+	err = pgxscan.Select(ctx, r.dbPool, &roles, query, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	return roles, nil
+}
