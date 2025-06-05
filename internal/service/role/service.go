@@ -44,3 +44,12 @@ func (s *Service) SetUserRole(ctx context.Context, tx pgx.Tx, userID int64, role
 
 	return nil
 }
+
+func (s *Service) ListRoles(ctx context.Context) ([]Role, error) {
+	roles, err := s.repo.listRoles(ctx)
+	if err != nil {
+		return nil, pgError.MapPostgresError("failed to get list roles", err)
+	}
+
+	return roles, nil
+}
