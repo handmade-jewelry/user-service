@@ -2,9 +2,12 @@ package role
 
 import (
 	"context"
-	pgError "github.com/handmade-jewelry/user-service/libs/pgutils"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	pgError "github.com/handmade-jewelry/user-service/libs/pgutils"
+	"github.com/handmade-jewelry/user-service/logger"
 )
 
 type Service struct {
@@ -20,7 +23,8 @@ func NewService(dbPool *pgxpool.Pool) *Service {
 func (s *Service) GetUserRolesName(ctx context.Context, userID int64) ([]string, error) {
 	roles, err := s.repo.getUserRoles(ctx, userID)
 	if err != nil {
-		return nil, pgError.MapPostgresError("failed to get user", err)
+		logger.ErrorWithFields("failed to get user roles", err, "user_id", userID)
+		return nil, pgError.MapPostgresError("roles", err)
 	}
 
 	res := make([]string, 0, len(roles))
@@ -34,12 +38,14 @@ func (s *Service) GetUserRolesName(ctx context.Context, userID int64) ([]string,
 func (s *Service) SetUserRole(ctx context.Context, tx pgx.Tx, userID int64, roleName RoleName) error {
 	role, err := s.repo.getRoleByName(ctx, roleName)
 	if err != nil {
-		return pgError.MapPostgresError("failed to get role", err)
+		logger.ErrorWithFields("failed to get role", err, "user_id", userID)
+		return pgError.MapPostgresError("role", err)
 	}
 
 	err = s.repo.setUserRole(ctx, tx, userID, role.ID)
 	if err != nil {
-		return pgError.MapPostgresError("failed to set user role", err)
+		logger.ErrorWithFields("failed to set role", err, "user_id", userID)
+		return pgError.MapPostgresError("role", err)
 	}
 
 	return nil
@@ -48,7 +54,8 @@ func (s *Service) SetUserRole(ctx context.Context, tx pgx.Tx, userID int64, role
 func (s *Service) ListRoles(ctx context.Context) ([]Role, error) {
 	roles, err := s.repo.listRoles(ctx)
 	if err != nil {
-		return nil, pgError.MapPostgresError("failed to get list roles", err)
+		logger.Error("failed to get list roles", err)
+		return nil, pgError.MapPostgresError("roles", err)
 	}
 
 	return roles, nil

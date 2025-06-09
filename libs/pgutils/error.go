@@ -9,9 +9,7 @@ import (
 )
 
 const (
-	AlreadyExistsCode      = "23505"
-	FailedPreconditionCode = "23503"
-	InvalidArgumentCode    = "23502"
+	AlreadyExistsCode = "23505"
 )
 
 func MapPostgresError(msg string, err error) error {
@@ -23,12 +21,8 @@ func MapPostgresError(msg string, err error) error {
 	if errors.As(err, &pgErr) {
 		switch pgErr.Code {
 		case AlreadyExistsCode:
-			return status.Error(codes.AlreadyExists, msg+": resource already exists")
-		case FailedPreconditionCode:
-			return status.Error(codes.FailedPrecondition, msg+": foreign key constraint failed")
-		case InvalidArgumentCode:
-			return status.Error(codes.InvalidArgument, msg+": null value in column that does not allow it")
+			return status.Error(codes.AlreadyExists, msg+": already exists")
 		}
 	}
-	return status.Error(codes.Internal, msg+" :"+err.Error())
+	return status.Error(codes.Internal, "internal error")
 }

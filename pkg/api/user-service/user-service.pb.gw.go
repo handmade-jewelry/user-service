@@ -567,7 +567,7 @@ var (
 
 	pattern_UserService_Login_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"login"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_UserService_GetUserRoles_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 4, 1, 5, 1, 2, 2}, []string{"users", "user_id", "roles"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_UserService_GetUserRoles_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 4, 1, 5, 1, 2, 2}, []string{"user", "user_id", "roles"}, "", runtime.AssumeColonVerbOpt(true)))
 
 	pattern_UserService_ListRoles_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"roles"}, "", runtime.AssumeColonVerbOpt(true)))
 )

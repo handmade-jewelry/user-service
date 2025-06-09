@@ -2,16 +2,13 @@ package user
 
 import (
 	"context"
-	"github.com/handmade-jewelry/user-service/logger"
 
-	"github.com/handmade-jewelry/user-service/internal/service/role"
 	pb "github.com/handmade-jewelry/user-service/pkg/api/user-service"
 )
 
 func (u *UserServiceServer) CustomerRegister(ctx context.Context, req *pb.RegisterRequest) (*pb.RegisterResponse, error) {
-	err := u.userService.Register(ctx, req.GetEmail(), req.GetPassword(), role.CustomerRoleName)
+	err := u.userService.RegisterCustomer(ctx, req.GetEmail(), req.GetPassword())
 	if err != nil {
-		logger.Error("registration failed", err)
 		return nil, err
 	}
 
