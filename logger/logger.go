@@ -28,6 +28,20 @@ func Error(msg string, err error) {
 	log.Error(msg, zap.Error(err))
 }
 
+func ErrorWithFields(msg string, err error, kvs ...interface{}) {
+	fields := []zap.Field{zap.Error(err)}
+
+	for i := 0; i < len(kvs)-1; i += 2 {
+		key, ok := kvs[i].(string)
+		if !ok {
+			continue
+		}
+		fields = append(fields, zap.Any(key, kvs[i+1]))
+	}
+
+	log.Error(msg, fields...)
+}
+
 func Fatal(msg string, err error) {
 	log.Fatal(msg, zap.Error(err))
 }

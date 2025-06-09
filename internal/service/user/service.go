@@ -12,25 +12,32 @@ import (
 	"github.com/handmade-jewelry/user-service/internal/service/verification"
 	"github.com/handmade-jewelry/user-service/internal/util/hasher"
 	"github.com/handmade-jewelry/user-service/internal/util/validation"
-	pgError "github.com/handmade-jewelry/user-service/libs/pgutils"
-	pgTx "github.com/handmade-jewelry/user-service/libs/pgutils"
+	pgUtils "github.com/handmade-jewelry/user-service/libs/pgutils"
 	"github.com/handmade-jewelry/user-service/logger"
 )
 
 type Service struct {
-	roleService         *role.Service
-	verificationService *verification.Service
 	repo                *repository
 	dbPool              *pgxpool.Pool
+	roleService         *role.Service
+	verificationService *verification.Service
 }
 
 func NewService(dbPool *pgxpool.Pool, roleService *role.Service, verificationService *verification.Service) *Service {
 	return &Service{
-		roleService:         roleService,
-		verificationService: verificationService,
 		repo:                newRepository(dbPool),
 		dbPool:              dbPool,
+		roleService:         roleService,
+		verificationService: verificationService,
 	}
+}
+
+func (s *Service) RegisterSeller(ctx context.Context, email, password string) error {
+	return s.Register(ctx, email, password, role.SellerRoleName)
+}
+
+func (s *Service) RegisterCustomer(ctx context.Context, email, password string) error {
+	return s.Register(ctx, email, password, role.CustomerRoleName)
 }
 
 func (s *Service) Register(ctx context.Context, email, password string, roleName role.RoleName) error {
@@ -46,7 +53,7 @@ func (s *Service) Register(ctx context.Context, email, password string, roleName
 
 	err = s.verificationService.SendVerificationLink(ctx, user.ID)
 	if err != nil {
-		logger.Error("failed to send verification", err)
+		logger.ErrorWithFields("failed to send verification", err, "user_id", user.ID)
 	}
 
 	return nil
@@ -54,11 +61,11 @@ func (s *Service) Register(ctx context.Context, email, password string, roleName
 
 func validateCredentials(email, password string) error {
 	if !validation.ValidatePassword(password) {
-		return status.Errorf(codes.InvalidArgument, "invalid password format")
+		return status.Error(codes.InvalidArgument, "invalid password format")
 	}
 
 	if !validation.ValidateEmail(email) {
-		return status.Errorf(codes.InvalidArgument, "invalid email format")
+		return status.Error(codes.InvalidArgument, "invalid email format")
 	}
 
 	return nil
@@ -66,15 +73,16 @@ func validateCredentials(email, password string) error {
 
 func (s *Service) CreateUserWithRole(ctx context.Context, email, password string, roleName role.RoleName) (*User, error) {
 	var user *User
-	err := pgTx.WithTx(ctx, s.dbPool, func(tx pgx.Tx) error {
+	err := pgUtils.WithTx(ctx, s.dbPool, func(tx pgx.Tx) error {
 		hashedPassword, err := hasher.GenerateHashPassword(password)
 		if err != nil {
-			return status.Errorf(codes.Internal, "failed to hash password: %v", err)
+			logger.Error("failed to hash password", err)
+			return status.Errorf(codes.Internal, "internal error")
 		}
 
 		user, err = s.repo.createUser(ctx, tx, email, hashedPassword)
 		if err != nil {
-			return pgError.MapPostgresError("failed to create user", err)
+			return pgUtils.MapPostgresError("user", err)
 		}
 
 		err = s.roleService.SetUserRole(ctx, tx, user.ID, roleName)
@@ -84,7 +92,6 @@ func (s *Service) CreateUserWithRole(ctx context.Context, email, password string
 
 		return nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -100,16 +107,17 @@ func (s *Service) Login(ctx context.Context, email, password string) (*UserWithR
 
 	user, err := s.repo.getUser(ctx, email)
 	if err != nil {
-		return nil, pgError.MapPostgresError("failed to get user", err)
+		logger.ErrorWithFields("failed to get user", pgUtils.MapPostgresError("", err), "email", email)
+		return nil, pgUtils.MapPostgresError("user", err)
 	}
 
 	isCheck, err := hasher.CompareHashAndPassword(password, user.Password)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "password check failed: %v", err)
+		return nil, status.Error(codes.Unauthenticated, "email or password is incorrect")
 	}
 
 	if !isCheck {
-		return nil, status.Error(codes.Unauthenticated, "password is incorrect")
+		return nil, status.Error(codes.Unauthenticated, "email or password is incorrect")
 	}
 
 	if !user.IsVerified {
@@ -118,7 +126,8 @@ func (s *Service) Login(ctx context.Context, email, password string) (*UserWithR
 
 	roles, err := s.roleService.GetUserRolesName(ctx, user.ID)
 	if err != nil {
-		return nil, err
+		logger.ErrorWithFields("failed to fetch roles", err, "user_id", user.ID)
+		return nil, status.Errorf(codes.Internal, "internal error")
 	}
 
 	return &UserWithRoles{
@@ -130,7 +139,7 @@ func (s *Service) Login(ctx context.Context, email, password string) (*UserWithR
 func (s *Service) MarkUserIsVerified(ctx context.Context, tx pgx.Tx, userID int64) error {
 	err := s.repo.markUserIsVerified(ctx, tx, userID)
 	if err != nil {
-		return pgError.MapPostgresError("failed to verify user", err)
+		return pgUtils.MapPostgresError("user", err)
 	}
 
 	return nil

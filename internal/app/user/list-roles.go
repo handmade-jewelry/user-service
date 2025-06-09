@@ -10,7 +10,7 @@ import (
 func (u *UserServiceServer) ListRoles(ctx context.Context, _ *emptypb.Empty) (*pb.GetListRolesResponse, error) {
 	roles, err := u.roleService.ListRoles(ctx)
 	if err != nil {
-
+		return nil, err
 	}
 
 	return &pb.GetListRolesResponse{
